@@ -29,8 +29,7 @@ pre-aggregated government tables.
 
 ```r
 # install.packages("devtools")
-devtools::load_all(".")            # from within the package directory
-# or devtools::install_local("path/to/covid")
+remotes::install_github("yyliou/covid")
 ```
 
 Dependencies: `readr`, `dplyr`, `tidyr`, `lubridate`, `jsonlite`, `rlang`.
