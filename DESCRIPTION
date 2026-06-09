@@ -1,0 +1,26 @@
+Package: twcovid
+Title: Fetch and Aggregate Taiwan COVID-19 Open Data
+Version: 0.1.0
+Authors@R:
+    person("Yuyou", "Liou", email = "yuyou.liou@gmail.com", role = c("aut", "cre"))
+Description: Download Taiwan CDC severe special infectious pneumonia (COVID-19)
+    confirmed-case open data from the government open data platform
+    (data.gov.tw / od.cdc.gov.tw) and reshape it into analysis-ready tables.
+    Cases can be tallied by day, week, or month; by onset date (發病日) or case
+    judgment date (個案研判日); and optionally zero-filled into a fully balanced
+    panel over any combination of region, township, sex, imported status, and
+    age group.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports:
+    readr,
+    dplyr,
+    tidyr,
+    lubridate,
+    jsonlite,
+    rlang
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+RoxygenNote: 7.3.1
+Roxygen: list(markdown = TRUE)
