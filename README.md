@@ -122,10 +122,16 @@ Sources are refreshed daily and report through the previous day.
 cached with the download date as the key (one fetch per day);
 `tw_covid_clear_cache()` removes the cache.
 
+ **Category encodings (as published).** The source uses coded category values,
+not free text: `性別` is `"M"`/`"F"`; `是否為境外移入` is `"1"` (imported) /
+`"0"` (domestic); `年齡層` uses ranges such as `"0"`, `"5~9"`, `"55~59"`, `"70+"`;
+dates are ISO `"YYYY-MM-DD"`. Filter `group_by` values accordingly (e.g.
+`subset(x, 是否為境外移入 == "0")`).
+
 > **Notes.** Imported cases are largely ascertained at airports or quarantine
-> facilities and carry no county information, so their `縣市` field is an empty
-> string; the `鄉鎮` (township) field is likewise empty for most records. Filter
-> on `是否為境外移入` as needed. After August 2024, deaths from the
+> facilities and often carry no county information, so their `縣市` field may be an
+> empty string; the `鄉鎮` (township) field is likewise empty for many records.
+> Filter on `是否為境外移入` as needed. After August 2024, deaths from the
 > "新冠併發重症" (severe COVID-19 complications) surveillance scheme are released
 > only by **onset week number** (no calendar-date field); the package therefore
 > uses the death-by-date-of-death daily table for the death outcome.

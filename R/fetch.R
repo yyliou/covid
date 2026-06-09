@@ -65,6 +65,38 @@
   d
 }
 
+# Browser-like User-Agent (some od.cdc.gov.tw paths reject default agents).
+.tw_user_agent <- function() {
+  paste0("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ",
+         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+}
+
+# Try download.file with a couple of methods; return the error message (or NULL
+# on success). Downloads to a temp file and renames on success so a partial /
+# failed download never poisons the cache.
+.tw_try_download <- function(url, dest, quiet, timeout = 600L) {
+  old <- options(timeout = max(timeout, getOption("timeout", 60L)),
+                 HTTPUserAgent = .tw_user_agent())
+  on.exit(options(old), add = TRUE)
+
+  tmp <- paste0(dest, ".part")
+  last_err <- NULL
+  for (m in c("libcurl", "curl", "auto")) {
+    ok <- tryCatch({
+      suppressWarnings(
+        utils::download.file(url, tmp, mode = "wb", quiet = quiet, method = m)
+      )
+      file.exists(tmp) && file.info(tmp)$size > 0
+    }, error = function(e) { last_err <<- conditionMessage(e); FALSE })
+    if (isTRUE(ok)) {
+      file.rename(tmp, dest)
+      return(NULL)
+    }
+    if (file.exists(tmp)) unlink(tmp)
+  }
+  last_err %||% "unknown download error"
+}
+
 # Download (or read from cache) one CSV. The cache key includes the current
 # date so the daily-refreshed source is re-fetched at most once per day.
 .tw_download_csv <- function(url, cache = TRUE, cache_dir = NULL, quiet = TRUE) {
@@ -76,13 +108,11 @@
   path <- file.path(dir, key)
 
   if (!(cache && file.exists(path) && file.info(path)$size > 0)) {
-    ok <- tryCatch({
-      utils::download.file(url, path, mode = "wb", quiet = quiet)
-      TRUE
-    }, error = function(e) FALSE)
-    if (!ok || !file.exists(path) || file.info(path)$size == 0) {
-      stop("Failed to download: ", url,
-           "\nCheck your internet connection / access to od.cdc.gov.tw.",
+    err <- .tw_try_download(url, path, quiet = quiet)
+    if (!is.null(err)) {
+      stop("Failed to download ", url, "\n  reason: ", err,
+           "\n  (Check internet / proxy access to od.cdc.gov.tw. ",
+           "Behind a proxy? set Sys.setenv(https_proxy=...).)",
            call. = FALSE)
     }
   }

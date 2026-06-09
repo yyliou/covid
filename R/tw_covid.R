@@ -10,10 +10,12 @@
   if (length(urls) == 0) {
     stop("No download URL resolved for this dataset / version.", call. = FALSE)
   }
+  errs <- character(0)
   parts <- lapply(names(urls), function(v) {
     d <- tryCatch(
       .tw_download_csv(urls[[v]], cache = cache, cache_dir = cache_dir),
       error = function(e) {
+        errs[[v]] <<- conditionMessage(e)
         if (identical(version, "both")) {
           warning("Skipping version '", v, "': ", conditionMessage(e), call. = FALSE)
           return(NULL)
@@ -26,7 +28,11 @@
     d
   })
   parts <- Filter(Negate(is.null), parts)
-  if (length(parts) == 0) stop("All version downloads failed.", call. = FALSE)
+  if (length(parts) == 0) {
+    stop("All version downloads failed:\n",
+         paste0("  - ", names(errs), ": ", unlist(errs), collapse = "\n"),
+         call. = FALSE)
+  }
   dplyr::bind_rows(parts)
 }
 
