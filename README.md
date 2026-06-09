@@ -1,6 +1,4 @@
-<img src="man/figures/logo.svg" align="right" height="139" alt="twcovid hex logo" />
-
-# twcovid
+# twcovid <img src="man/figures/logo.svg" align="right" height="139" alt="twcovid hex logo" />
 
 **twcovid** retrieves Taiwan CDC COVID-19 open data — confirmed cases and
 deaths — and reshapes it into analysis-ready tables. A single call to
@@ -31,8 +29,7 @@ pre-aggregated government tables.
 
 ```r
 # install.packages("devtools")
-devtools::load_all(".")            # from within the package directory
-# or devtools::install_local("path/to/covid")
+remotes::install_github("yyliou/covid")
 ```
 
 Dependencies: `readr`, `dplyr`, `tidyr`, `lubridate`, `jsonlite`, `rlang`.
