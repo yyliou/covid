@@ -133,6 +133,24 @@ dates are ISO `"YYYY-MM-DD"`. Filter `group_by` values accordingly (e.g.
 > only by **onset week number** (no calendar-date field); the package therefore
 > uses the death-by-date-of-death daily table for the death outcome.
 
+## Troubleshooting downloads
+
+`od.cdc.gov.tw` serves a browser-valid certificate but omits an intermediate in
+the chain, so R's `download.file()` may fail with `SSL certificate problem:
+unable to get local issuer certificate`. `twcovid` handles this automatically:
+it first attempts a verified `libcurl` download, and if that fails with a TLS
+error it retries once **without** verification (the certificate is otherwise
+trusted by browsers) and emits a warning. To silence the warning and always use
+the unverified path, set `options(twcovid.insecure = TRUE)`. Large files (the
+pre-2023 `19CoV` table) also benefit from the raised timeout (600s) the package
+sets during download. Behind a corporate proxy, set
+`Sys.setenv(https_proxy = "http://host:port")` before calling.
+
+Note on the death series: the package uses the **by-date-of-death daily** file
+(`open_data_death_date_statistics_19{CoV,CVS}_2.csv`, which has a real `死亡日`
+column). The `…_3.csv` files are tabulated by **death week number** (`死亡年份`,
+`死亡週別`) with no calendar-date column, and are not used here.
+
 ## Testing
 
 The pure data transforms (aggregation, zero-filling, cumulation, the `"both"`

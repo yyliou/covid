@@ -71,27 +71,59 @@
          "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 }
 
-# Try download.file with a couple of methods; return the error message (or NULL
-# on success). Downloads to a temp file and renames on success so a partial /
-# failed download never poisons the cache.
+# Try to download `url` to `dest`. Returns NULL on success, else an error
+# message. Writes to a temp file and renames on success so a partial / failed
+# download never poisons the cache.
+#
+# od.cdc.gov.tw serves a browser-valid certificate but omits an intermediate in
+# the chain, so command-line curl / libcurl can fail with "unable to get local
+# issuer certificate". We therefore: (1) try ordinary verified download; (2) if
+# that fails with a TLS/cert error, retry once WITHOUT verification (the cert is
+# otherwise trusted by browsers) and warn. Set options(twcovid.insecure = TRUE)
+# to skip straight to the unverified path silently.
 .tw_try_download <- function(url, dest, quiet, timeout = 600L) {
   old <- options(timeout = max(timeout, getOption("timeout", 60L)),
                  HTTPUserAgent = .tw_user_agent())
   on.exit(options(old), add = TRUE)
 
   tmp <- paste0(dest, ".part")
-  last_err <- NULL
-  for (m in c("libcurl", "curl", "auto")) {
-    ok <- tryCatch({
+  ua  <- shQuote(.tw_user_agent())
+  forced_insecure <- isTRUE(getOption("twcovid.insecure", FALSE))
+
+  run <- function(method, extra = NULL) {
+    tryCatch({
       suppressWarnings(
-        utils::download.file(url, tmp, mode = "wb", quiet = quiet, method = m)
+        utils::download.file(url, tmp, mode = "wb", quiet = quiet,
+                             method = method, extra = extra)
       )
       file.exists(tmp) && file.info(tmp)$size > 0
-    }, error = function(e) { last_err <<- conditionMessage(e); FALSE })
-    if (isTRUE(ok)) {
+    }, error = function(e) { attr(e, "msg") <- conditionMessage(e); e })
+  }
+
+  # ordered attempts: verified libcurl first (fails quietly), then a silent
+  # unverified curl fallback. Skip straight to insecure if forced.
+  secure   <- list(method = "libcurl")
+  insecure <- list(method = "curl", extra = paste("-k -fsSL --retry 2 -A", ua))
+
+  attempts <- if (forced_insecure) list(insecure) else list(secure, insecure)
+
+  last_err <- NULL
+  for (i in seq_along(attempts)) {
+    a <- attempts[[i]]
+    res <- run(a$method, a$extra)
+    if (isTRUE(res)) {
+      is_insecure <- identical(a$extra, insecure$extra)
+      if (is_insecure && !forced_insecure) {
+        warning("twcovid: downloaded from od.cdc.gov.tw WITHOUT TLS ",
+                "verification. The server omits an intermediate certificate; ",
+                "the certificate is otherwise browser-trusted. Silence with ",
+                "options(twcovid.insecure = TRUE), or install the missing CA.",
+                call. = FALSE)
+      }
       file.rename(tmp, dest)
       return(NULL)
     }
+    if (inherits(res, "error")) last_err <- attr(res, "msg")
     if (file.exists(tmp)) unlink(tmp)
   }
   last_err %||% "unknown download error"
