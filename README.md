@@ -1,6 +1,6 @@
-# twcovid <img src="man/figures/logo.svg" align="right" height="139" alt="twcovid hex logo" />
+# twcovid 
 
-## 1. Overview
+## 1. Overview <img src="man/figures/logo.svg" align="right" height="139" alt="twcovid hex logo" />
 
 `twcovid` retrieves Taiwan CDC COVID-19 open data — confirmed cases and deaths —
 and reshapes it into analysis-ready tables. A single call to `tw_covid()` lets
