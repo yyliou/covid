@@ -4,6 +4,9 @@
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
+# Session-scoped state (e.g. so the "insecure TLS" notice fires only once).
+.tw_env <- new.env(parent = emptyenv())
+
 # Tag a vector of URLs with their case-definition version code.
 .tw_tag_versions <- function(urls) {
   nm <- ifelse(grepl("19CVS", urls), "19CVS",
@@ -14,7 +17,7 @@
 
 # Resolve current CSV URLs from the data.gov.tw open-data API (by numeric id).
 .tw_govtw_urls <- function(gov_id) {
-  tryCatch({
+  tryCatch(suppressWarnings({
     api <- sprintf("https://data.gov.tw/api/v2/rest/dataset/%s", gov_id)
     js  <- jsonlite::fromJSON(api, simplifyVector = FALSE)
     dist <- js$result$distribution
@@ -22,12 +25,12 @@
       if (identical(d$resourceFormat, "CSV")) d$resourceDownloadUrl else NA_character_
     }, character(1))
     .tw_tag_versions(urls[!is.na(urls)])
-  }, error = function(e) character(0))
+  }), error = function(e) character(0))
 }
 
 # Resolve current CSV URLs from the CDC open-data CKAN portal (by slug id).
 .tw_cdc_urls <- function(cdc_id) {
-  tryCatch({
+  tryCatch(suppressWarnings({
     api <- sprintf("https://data.cdc.gov.tw/api/3/action/package_show?id=%s", cdc_id)
     js  <- jsonlite::fromJSON(api, simplifyVector = FALSE)
     res <- js$result$resources
@@ -35,7 +38,7 @@
       if (toupper(r$format %||% "") == "CSV") r$url else NA_character_
     }, character(1))
     .tw_tag_versions(urls[!is.na(urls)])
-  }, error = function(e) character(0))
+  }), error = function(e) character(0))
 }
 
 # Resolve the list of (version -> url) to download for one outcome/date_type.
@@ -113,12 +116,13 @@
     res <- run(a$method, a$extra)
     if (isTRUE(res)) {
       is_insecure <- identical(a$extra, insecure$extra)
-      if (is_insecure && !forced_insecure) {
-        warning("twcovid: downloaded from od.cdc.gov.tw WITHOUT TLS ",
-                "verification. The server omits an intermediate certificate; ",
-                "the certificate is otherwise browser-trusted. Silence with ",
-                "options(twcovid.insecure = TRUE), or install the missing CA.",
-                call. = FALSE)
+      if (is_insecure && !forced_insecure && !isTRUE(.tw_env$insecure_warned)) {
+        warning("twcovid: downloading from od.cdc.gov.tw WITHOUT TLS ",
+                "verification (server omits an intermediate certificate; the ",
+                "certificate is otherwise browser-trusted). This notice is ",
+                "shown once per session. Silence with ",
+                "options(twcovid.insecure = TRUE).", call. = FALSE)
+        .tw_env$insecure_warned <- TRUE
       }
       file.rename(tmp, dest)
       return(NULL)
